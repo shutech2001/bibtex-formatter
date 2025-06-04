@@ -1,0 +1,19 @@
+[project]
+name = "bibtex-formatter"
+version = "0.1.0"
+description = "A Python CLI tool to clean, normalize, and format BibTeX files."
+authors = [
+    {name = "Shu Tamano"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bibtexparser (>=1.4.3,<2.0.0)",
+    "latexcodec (>=3.0.0,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
