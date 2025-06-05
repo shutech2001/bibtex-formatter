@@ -152,9 +152,9 @@ def normalize_pages(p: str) -> str:
     """
     s = p.strip()
     # if '--' is already present, return it as is.
-    if "--" in s:
+    if "--" in s and not re.search(r"\s--\s", s):
         return s
-    return re.sub(r"\s*[--]\s*", "--", s)
+    return re.sub(r"\s*-+\s*", "--", s)
 
 
 # modules for formatting title
