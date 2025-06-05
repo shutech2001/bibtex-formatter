@@ -1,8 +1,11 @@
-# bibtex-formatter
+<h1 align="center">
+  <img src="imgs/logo.png" width=50%>
+</h1>
+<p align="center">Standardizing the complicated BibTeX format.</p>
 
 ## :diamonds: What is this repo?
 
-Standardizing the complicated BibTeX format.
+This repository provides a script and configuration file for formatting the structure of input `.bib` file.
 
 ### :whale: Requirements and Setup
 ```
