@@ -21,7 +21,7 @@ poetry env info --path
 
 ### :sparkles: Execution
 ```
-$ python clean_bib.py input.bib
+$ python bibtex_formatter.py input.bib
 ```
 
 #### :art: Argument
@@ -31,8 +31,8 @@ $ python clean_bib.py input.bib
 - `-o` | `--output`
   - specify the name of the output .bib file after formatting
     - e.g., `-o output.bib`
-  - if not specified, the filename will be the original `bibfile` name with `_clean` appended to the end.
-    - e.g., if you specify `reference.bib` as `bibfile`, then output file name is `reference_clean.bib`
+  - if not specified, the filename will be the original `bibfile` name with `_formatted` appended to the end.
+    - e.g., if you specify `reference.bib` as `bibfile`, then output file name is `reference_formatted.bib`
 - `-c` | `--case`
   - select the case for title of each BibTeX entry
     - Choices: `sentence` | `title` (Default: `sentence`)
@@ -58,7 +58,7 @@ $ python clean_bib.py input.bib
       - All words included here will be mainly articles and prepositions.
       - These specified words will be output in lowercase in titles, journal names, conference names, etc.
         - e.g., if you include `preprint`, the output will be `preprint`
-    - `USER_SPECIFIED_JOURNAL_CONFERENCE`
+    - `ACRONYMS`
       - All words specified here will be output as specified in journal names and conference names.
         - e.g., acronyms like `ACM` are expected to be included
 
