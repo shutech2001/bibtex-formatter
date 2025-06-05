@@ -505,7 +505,7 @@ def main(infile: Path, outfile: Path) -> None:
     with outfile.open("w", encoding="utf-8") as f:
         f.write(writer.write(db))
 
-    print(f"[+] Cleaned .bib written to {outfile}")
+    print(f"[+] Formatted .bib written to {outfile}")
 
 
 if __name__ == "__main__":
@@ -516,7 +516,7 @@ if __name__ == "__main__":
         "bibfile", type=Path, help="Input .bib file",
     )
     parser.add_argument(
-        "-o", "--output", type=Path, default=None, help="Output .bib file (default: <infile>_clean.bib)"
+        "-o", "--output", type=Path, default=None, help="Output .bib file (default: <infile>_formatted.bib)"
     )
     parser.add_argument(
         "-c", "--case", choices=["title", "sentence"], default="sentence",
@@ -563,5 +563,5 @@ if __name__ == "__main__":
     EXCLUDE_BRACE = args.exclude_brace
 
     # execute formatter
-    out = args.output or args.bibfile.with_stem(args.bibfile.stem + "_clean")
+    out = args.output or args.bibfile.with_stem(args.bibfile.stem + "_formatted")
     main(args.bibfile, out)
