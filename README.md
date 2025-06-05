@@ -64,6 +64,20 @@ $ python bibtex_formatter.py input.bib
     - `ACRONYMS`
       - All words specified here will be output as specified in journal names and conference names.
         - e.g., acronyms like `ACM` are expected to be included
+    - `KEEP_ELEMENTS`
+      - Adjust the fields to be output according to the entry type of each bibitem.
+        - `ARTICLE_KEEP`
+          - entry type: article
+          - keep `ID`, `author`, `title`, `journal`, `volume`, `number`, `pages`, `year`
+        - `BOOK_KEEP`
+          - entry type: book
+          - keep `ID`, `author`, `title`, `publisher`, `volume`, `year`
+        - `INPROC_KEEP`
+          - entry type: inproceedings
+          - keep `ID`, `author`, `title`, `booktitle`, `pages`, `year`
+        - `OTHER_KEEP`
+          - others
+          - keep `ID`, `author`, `title`, `year`
 
 ## :phone: Contact
 
