@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="imgs/logo.png" width=50%>
+  <img src="img/logo.png" width=50%>
 </h1>
 <p align="center">Standardizing the complicated BibTeX format.</p>
 
