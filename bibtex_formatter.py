@@ -19,6 +19,7 @@ def protect_proper_nouns(title: str) -> str:
     Returns:
         str: string with proper nouns enclosed in '{}'
     """
+
     def needs_brace(word: str) -> bool:
         """Check whether '{}' is needed
 
@@ -51,7 +52,7 @@ def protect_proper_nouns(title: str) -> str:
                 elif title[j] == "}":
                     brace -= 1
                 j += 1
-            block = title[i+1:j-1]
+            block = title[i + 1:j - 1]
             # remove '{}' when exclude-mode and not need braces
             if EXCLUDE_BRACE and not needs_brace(block):
                 parts.append(protect_proper_nouns(block))
@@ -218,7 +219,7 @@ def title_case(text: str) -> str:
             m = re.search(r"[A-Za-z]", w)
             if m:
                 pos = m.start()
-                new_w = w[:pos] + w[pos].upper() + w[pos+1:].lower()
+                new_w = w[:pos] + w[pos].upper() + w[pos + 1:].lower()
             else:
                 new_w = w
             result.append(new_w)
@@ -235,7 +236,7 @@ def title_case(text: str) -> str:
         m = re.search(r"[A-Za-z]", w)
         if m:
             pos = m.start()
-            new_w = w[:pos] + w[pos].upper() + w[pos+1:].lower()
+            new_w = w[:pos] + w[pos].upper() + w[pos + 1:].lower()
         else:
             new_w = w
         result.append(new_w)
@@ -317,7 +318,7 @@ def book_title_case(text: str) -> str:
                 if m:
                     pos = m.start()
                     first_char = core[pos].upper()
-                    rest = core[pos+1:].lower()
+                    rest = core[pos + 1:].lower()
                     new_core = core[:pos] + first_char + rest
                 else:
                     new_core = core
@@ -338,7 +339,7 @@ def book_title_case(text: str) -> str:
                 if m:
                     pos = m.start()
                     first_char = core[pos].upper()
-                    rest = core[pos+1:].lower()
+                    rest = core[pos + 1:].lower()
                     new_core = core[:pos] + first_char + rest
                 else:
                     new_core = core
@@ -409,7 +410,7 @@ def sentence_case(text: str) -> str:
             m = re.search(r"[A-Za-z]", w)
             if m:
                 pos = m.start()
-                new_w = w[:pos] + w[pos].upper() + w[pos+1:].lower()
+                new_w = w[:pos] + w[pos].upper() + w[pos + 1:].lower()
             else:
                 new_w = w
             result.append(new_w)
@@ -437,13 +438,27 @@ def format_entry(entry: Dict) -> Dict:
         entry["author"] = normalize_author_field(entry["author"])
 
     # process for journal, booktitle field
-    for field in ["journal", 'booktitle']:
+    for field in ["journal", "booktitle"]:
         if field in entry:
             entry[field] = title_case(entry[field])
     # if it is arXiv, a separate conversion process will be applied.
-    if "arxiv" in entry.get("journal", "").lower():
+    if (
+        entry.get("ENTRYTYPE", "").lower() == "misc"
+        or "arxiv" in entry.get("journal", "").lower()
+    ):
+        # extracted arXiv id
+        arx_id = None
+        # extract arXiv id from note field
+        m = re.search(r"arXiv:([0-9.]+)", entry.get("note", ""), flags=re.I)
+        if m:
+            arx_id = m.group(1)
+
         entry["ENTRYTYPE"] = "article"
-        entry["journal"] = entry["journal"].replace("Arxiv", "arXiv")
+        if arx_id:
+            entry["journal"] = f"arXiv preprint arXiv:{arx_id}"
+        else:
+            # if no arXiv id, then only 'arXiv preprint'
+            entry["journal"] = "arXiv preprint"
 
     # process for pages field
     if "pages" in entry:
@@ -513,26 +528,35 @@ if __name__ == "__main__":
         description="BibTeX formatter (title-case / sentence-case switchable)"
     )
     parser.add_argument(
-        "bibfile", type=Path, help="Input .bib file",
+        "bibfile",
+        type=Path,
+        help="Input .bib file",
     )
     parser.add_argument(
-        "-o", "--output", type=Path, default=None, help="Output .bib file (default: <infile>_formatted.bib)"
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        help="Output .bib file (default: <infile>_formatted.bib)",
     )
     parser.add_argument(
-        "-c", "--case", choices=["title", "sentence"], default="sentence",
-        help="title capitalisation style (default: sentence)"
+        "-c",
+        "--case",
+        choices=["title", "sentence"],
+        default="sentence",
+        help="title capitalisation style (default: sentence)",
     )
     parser.add_argument(
-        "-eb", "--exclude-brace",
-        choices=[True, False],
-        default=True,
-        help="remove braces around words that are *not* in USER_SPECIFIED_TITLE"
+        "-eb",
+        "--exclude-brace",
+        action="store_true",
+        help="If given, remove braces around words *not* in USER_SPECIFIED_TITLE",
     )
     parser.add_argument(
         "--config",
         type=Path,
         default=f"{Path(__file__).parent}/config.json",
-        help=f"path to the JSON file in which the configure is set (default: {Path(__file__).parent}/config.json)"
+        help=f"path to the JSON file in which the configure is set (default: {Path(__file__).parent}/config.json)",
     )
     args = parser.parse_args()
 
