@@ -124,21 +124,33 @@ def normalize_author_field(author_field: str) -> str:
     Returns:
         str: string where each author's name is formatted as "Last, Initials"
     """
-    normalized_authors = []
-    for raw_author in re.split(r"\s+and\s+", author_field):
-        if "," in raw_author:
-            last, given = [p.strip() for p in raw_author.split(",", 1)]
+    normalized = []
+    for raw in re.split(r"\s+and\s+", author_field):
+        if "," in raw:
+            last, given = [p.strip() for p in raw.split(",", 1)]
         else:
-            parts = raw_author.strip().split()
-            last = parts[-1]
-            given = " ".join(parts[:-1])
+            tokens = raw.strip().split()
+            idx = len(tokens) - 1
+            last_parts = [tokens[idx]]
+            idx -= 1
+
+            while idx >= 0:
+                t = tokens[idx]
+                if t[0].islower():
+                    last_parts.insert(0, t)
+                    idx -= 1
+                else:
+                    break
+
+            last = " ".join(last_parts)
+            given = " ".join(tokens[:idx+1])
+
+        initials = ""
         if given:
-            tokens = given.split()
-            initials = "~".join(_abbr_given(tok) for tok in tokens if tok.strip())
-        else:
-            initials = ""
-        normalized_authors.append(f"{last}, {initials}")
-    return " and ".join(normalized_authors)
+            initials = "~".join(_abbr_given(x) for x in given.split() if x.strip())
+        normalized.append(f"{last}, {initials}")
+
+    return " and ".join(normalized)
 
 
 # module for formatting pages
