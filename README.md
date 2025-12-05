@@ -81,4 +81,4 @@ $ python bibtex_formatter.py input.bib
 
 ## :phone: Contact
 
-If you have any features you would like to add or have any questions, please feel free to create a Pull Request or contact: stamano@niid.go.jp
+If you have any features you would like to add or have any questions, please feel free to create a Pull Request or contact: tamano.s@jihs.go.jp
