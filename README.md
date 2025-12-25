@@ -43,7 +43,7 @@ $ python bibtex_formatter.py input.bib
   - if you are using APA (American Psychological Association), Chicago Author-Date, IEEE reference style, etc., choose `sentence` (default)
   - if you are using MLA (Modern Language Association), Chicago Notes-and-Bibliography, etc., choose `title`
 - `-eb` | `--exclude-brace`
-  - whether remove braces `{`, `}` around words that are **not** in `USER_SPECIFIED_TITLE` (Default: `True`)
+  - whether remove braces `{`, `}` around words that are **not** in `USER_SPECIFIED_TITLE`
 - `--config`
   - path to the JSON file in which the configure is set (Default: `{Path(__file__).parent}/config.json`)
   - **In most cases, you will not need to specify this.**

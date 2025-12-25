@@ -73,11 +73,14 @@
       "IEEE",
       "SIGKDD"
     ],
+    "JOURNAL_CANONICAL": [
+      "PLoS"
+    ],
     "KEEP_ELEMENTS": {
-      "ARTICLE_KEEP": ["ID", "author", "title", "journal", "volume", "number", "pages", "year"],
-      "BOOK_KEEP": ["ID", "author", "title", "publisher", "volume", "year"],
-      "INPROC_KEEP": ["ID", "author", "title", "booktitle", "pages", "year"],
-      "OTHER_KEEP": ["ID", "author", "title", "year"]
+      "ARTICLE_KEEP": ["ID", "author", "title", "journal", "volume", "number", "pages", "year", "publisher"],
+      "BOOK_KEEP": ["ID", "author", "title", "publisher", "volume", "year", "publisher"],
+      "INPROC_KEEP": ["ID", "author", "title", "booktitle", "pages", "year", "publisher"],
+      "OTHER_KEEP": ["ID", "author", "title", "booktitle", "pages", "year", "publisher"]
     }
   }
   
