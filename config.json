@@ -43,7 +43,8 @@
       "Wallis",
       "Weibull",
       "Whitney",
-      "Wilcoxon"
+      "Wilcoxon",
+      "COVID-19"
     ],
     "EXCLUDE_APOS_S": [
     ],
@@ -74,7 +75,9 @@
       "SIGKDD"
     ],
     "JOURNAL_CANONICAL": [
-      "PLoS"
+      "PLoS",
+      "GeoHealth",
+      "eLife"
     ],
     "KEEP_ELEMENTS": {
       "ARTICLE_KEEP": ["ID", "author", "title", "journal", "volume", "number", "pages", "year", "publisher"],
