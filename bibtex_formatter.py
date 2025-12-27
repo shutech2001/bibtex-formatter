@@ -107,6 +107,17 @@ def _abbr_given(given: str) -> str:
     idx = m.start()
     head = given[:idx]
     core = given[idx:]
+
+    # If already abbreviated with '~', preserve all initials (e.g., "A.~B.")
+    if "~" in core:
+        subs = [p for p in core.split("~") if p.strip()]
+        return head + "~".join(_abbr_given(p) for p in subs)
+
+    # If already packed initials like "A.B." keep both initials
+    if re.fullmatch(r"(?:[A-Za-z]\.){2,}", core):
+        # keep as-is (or return "~".join(re.findall(r"[A-Za-z]\.", core)) if you prefer)
+        return head + core
+
     parts = re.split(r"[-\s]+", core)
     initials = []
     for p in parts:
@@ -138,8 +149,8 @@ def _tokenize_outside_braces(s: str) -> list[str]:
     n = len(s)
 
     while i < n:
-        # skip spaces
-        if s[i].isspace():
+        # skip spaces and BibTeX non-breaking space (~)
+        if s[i].isspace() or s[i] == "~":
             i += 1
             continue
 
@@ -157,9 +168,9 @@ def _tokenize_outside_braces(s: str) -> list[str]:
             i = j
             continue
 
-        # normal token until whitespace
+        # normal token until whitespace or '~'
         j = i
-        while j < n and not s[j].isspace():
+        while j < n and (not s[j].isspace()) and s[j] != "~":
             # do not start a brace group here; it becomes its own token in next loop
             if s[j] == "{":
                 break
