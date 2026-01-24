@@ -44,7 +44,8 @@
       "Weibull",
       "Whitney",
       "Wilcoxon",
-      "COVID-19"
+      "COVID-19",
+      "Q-learning"
     ],
     "EXCLUDE_APOS_S": [
     ],
