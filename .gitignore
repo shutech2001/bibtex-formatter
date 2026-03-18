@@ -195,3 +195,9 @@ cython_debug/
 
 # bibitem
 *.bib
+
+# .DS_Store
+.DS_Store
+
+# for unit tests
+tests/
