@@ -65,19 +65,20 @@ $ python bibtex_formatter.py input.bib
       - All words specified here will be output as specified in journal names and conference names.
         - e.g., acronyms like `ACM` are expected to be included
     - `KEEP_ELEMENTS`
-      - Adjust the fields to be output according to the entry type of each bibitem.
+      - Adjust the preferred output order according to the entry type of each bibitem.
+      - Fields not listed here are still preserved after the preferred fields so that metadata is not dropped accidentally.
         - `ARTICLE_KEEP`
           - entry type: article
-          - keep `ID`, `author`, `title`, `journal`, `volume`, `number`, `pages`, `year`
+          - prefer `ID`, `author`, `title`, `journal`, `volume`, `number`, `pages`, `year`
         - `BOOK_KEEP`
           - entry type: book
-          - keep `ID`, `author`, `title`, `publisher`, `volume`, `year`
+          - prefer `ID`, `author`, `title`, `publisher`, `volume`, `year`
         - `INPROC_KEEP`
           - entry type: inproceedings
-          - keep `ID`, `author`, `title`, `booktitle`, `pages`, `year`
+          - prefer `ID`, `author`, `title`, `booktitle`, `pages`, `year`
         - `OTHER_KEEP`
           - others
-          - keep `ID`, `author`, `title`, `year`
+          - prefer `ID`, `author`, `title`, `year`
 
 ## :phone: Contact
 
