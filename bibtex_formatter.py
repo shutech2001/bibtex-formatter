@@ -226,19 +226,19 @@ def _split_on_char_outside_braces(text: str, sep: str) -> List[str]:
     return [part for part in parts if part]
 
 
-def _encode_initial_char(ch: str) -> str:
+def _encode_initial_char(ch: str) -> bytes:
     """Encode the initial character of the input.
 
     Args:
         ch (str): The initial character to encode.
 
     Returns:
-        str: The encoded character.
+        bytes: The encoded character.
     """
-    tex = codecs.encode(ch, "ulatex").decode("utf-8")
+    tex = codecs.encode(ch, "ulatex")
     if tex == ch:
         return tex
-    return "{" + tex + "}"
+    return b"{" + tex + b"}"
 
 
 def _abbr_given(given: str) -> str:
