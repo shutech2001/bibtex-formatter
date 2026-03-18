@@ -1,12 +1,90 @@
 import argparse
+import codecs
 import json
 import re
 from pathlib import Path
 import string
-from typing import Dict
+from typing import Dict, List
 
 import bibtexparser  # type: ignore
 from bibtexparser.bwriter import BibTexWriter  # type: ignore
+import latexcodec  # type: ignore  # noqa: F401
+
+
+DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.json")
+
+USER_SPECIFIED_TITLE: set[str] = set()
+PROPER_LOWER_MAP: dict[str, str] = {}
+EXCLUDE_APOS_S: set[str] = set()
+LOWER: set[str] = set()
+ACRONYMS: set[str] = set()
+JOURNAL_CANONICAL_MAP: dict[str, str] = {}
+JOURNAL_CANONICAL_PATTERNS: list[tuple[re.Pattern, str]] = []
+ARTICLE_KEEP: list[str] = []
+BOOK_KEEP: list[str] = []
+INPROC_KEEP: list[str] = []
+OTHER_KEEP: list[str] = []
+CASE = "sentence"
+EXCLUDE_BRACE = False
+
+
+def load_config(config_path: Path = DEFAULT_CONFIG_PATH) -> Dict:
+    """Load the configuration from the given path.
+
+    Args:
+        config_path (Path, optional):
+            The path to the JSON file in which the configure is set.
+            Defaults to DEFAULT_CONFIG_PATH.
+
+    Returns:
+        dict: The configuration.
+    """
+    with config_path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def apply_config(config: dict) -> None:
+    """Apply the configuration to the formatter.
+
+    Args:
+        config (dict): The configuration to apply.
+    """
+    global USER_SPECIFIED_TITLE, PROPER_LOWER_MAP
+    USER_SPECIFIED_TITLE = set(config.get("USER_SPECIFIED_TITLE", []))
+    PROPER_LOWER_MAP = {noun.lower(): noun for noun in USER_SPECIFIED_TITLE}
+
+    global EXCLUDE_APOS_S, LOWER, ACRONYMS, JOURNAL_CANONICAL_MAP, JOURNAL_CANONICAL_PATTERNS
+    EXCLUDE_APOS_S = set(config.get("EXCLUDE_APOS_S", []))
+    LOWER = set(config.get("LOWER", []))
+    ACRONYMS = set(config.get("ACRONYMS", []))
+    journal_canonical = config.get("JOURNAL_CANONICAL", [])
+    JOURNAL_CANONICAL_MAP = {_journal_key(x): x for x in journal_canonical}
+    JOURNAL_CANONICAL_PATTERNS = [(_canonical_pattern(x), x) for x in sorted(journal_canonical, key=len, reverse=True)]
+
+    global ARTICLE_KEEP, BOOK_KEEP, INPROC_KEEP, OTHER_KEEP
+    keep_elements = config.get("KEEP_ELEMENTS", {})
+    ARTICLE_KEEP = keep_elements.get("ARTICLE_KEEP", [])
+    BOOK_KEEP = keep_elements.get("BOOK_KEEP", [])
+    INPROC_KEEP = keep_elements.get("INPROC_KEEP", [])
+    OTHER_KEEP = keep_elements.get("OTHER_KEEP", [])
+
+
+def configure(case: str = "sentence", exclude_brace: bool = False, config_path: Path = DEFAULT_CONFIG_PATH) -> None:
+    """Configure the formatter based on the given arguments.
+
+    Args:
+        case (str, optional):
+            The case for title of each BibTeX entry. Defaults to "sentence".
+        exclude_brace (bool, optional):
+            Whether remove braces `{`, `}` around words that are **not** in `USER_SPECIFIED_TITLE`. Defaults to False.
+        config_path (Path, optional):
+            The path to the JSON file in which the configure is set. Defaults to DEFAULT_CONFIG_PATH.
+    """
+    apply_config(load_config(config_path))
+
+    global CASE, EXCLUDE_BRACE
+    CASE = case
+    EXCLUDE_BRACE = exclude_brace
 
 
 def protect_proper_nouns(title: str) -> str:
@@ -89,6 +167,80 @@ def protect_proper_nouns(title: str) -> str:
 
 
 # modules for formatting author
+def _decode_latex(text: str) -> str:
+    """Decode the LaTeX text.
+
+    Args:
+        text (str): The LaTeX text to decode.
+
+    Returns:
+        str: The decoded text.
+    """
+    try:
+        return codecs.decode(text.encode("utf-8"), "ulatex")
+    except Exception:
+        return text
+
+
+def _letters_only(text: str) -> str:
+    decoded = _decode_latex(text).replace("{", "").replace("}", "")
+    return "".join(ch for ch in decoded if ch.isalpha())
+
+
+def _preserve_token_case(token: str) -> bool:
+    if any(ch in token for ch in "{}\\"):
+        return True
+
+    letters = _letters_only(token)
+    if len(letters) >= 2 and letters.isupper():
+        return True
+
+    return any(ch.isupper() for ch in letters[1:])
+
+
+def _split_on_char_outside_braces(text: str, sep: str) -> List[str]:
+    """Split the input on the given character outside braces.
+
+    Args:
+        text (str): The input text to split.
+        sep (str): The character to split on.
+
+    Returns:
+        list[str]: The split parts.
+    """
+    parts: list[str] = []
+    depth = 0
+    start = 0
+
+    for idx, ch in enumerate(text):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth = max(depth - 1, 0)
+        elif ch == sep and depth == 0:
+            parts.append(text[start:idx])
+            parts.append(ch)
+            start = idx + 1
+
+    parts.append(text[start:])
+    return [part for part in parts if part]
+
+
+def _encode_initial_char(ch: str) -> str:
+    """Encode the initial character of the input.
+
+    Args:
+        ch (str): The initial character to encode.
+
+    Returns:
+        str: The encoded character.
+    """
+    tex = codecs.encode(ch, "ulatex").decode("utf-8")
+    if tex == ch:
+        return tex
+    return "{" + tex + "}"
+
+
 def _abbr_given(given: str) -> str:
     """Abbreviate the input by extracting the initials of each part of the name.
 
@@ -101,29 +253,21 @@ def _abbr_given(given: str) -> str:
     given = given.strip()
     if not given:
         return ""
-    m = re.search(r"[A-Za-z]", given)
-    if not m:
+
+    if "." in given:
+        letters = _letters_only(given)
+        if letters and letters.upper() == letters and len(letters) <= 2:
+            return given
+
+    hyphen_parts = _split_on_char_outside_braces(given, "-")
+    if len(hyphen_parts) > 1:
+        return "".join(part if part == "-" else _abbr_given(part) for part in hyphen_parts)
+
+    letters = _letters_only(given)
+    if not letters:
         return given
-    idx = m.start()
-    head = given[:idx]
-    core = given[idx:]
 
-    # If already abbreviated with '~', preserve all initials (e.g., "A.~B.")
-    if "~" in core:
-        subs = [p for p in core.split("~") if p.strip()]
-        return head + "~".join(_abbr_given(p) for p in subs)
-
-    # If already packed initials like "A.B." keep both initials
-    if re.fullmatch(r"(?:[A-Za-z]\.){2,}", core):
-        # keep as-is (or return "~".join(re.findall(r"[A-Za-z]\.", core)) if you prefer)
-        return head + core
-
-    parts = re.split(r"[-\s]+", core)
-    initials = []
-    for p in parts:
-        if INITIAL_RE.match(p):
-            initials.append(p[0] + ".")
-    return head + "-".join(initials)
+    return _encode_initial_char(letters[0]) + "."
 
 
 def _split_first_outside_braces(s: str, sep: str = ",") -> tuple[str, str] | None:
@@ -154,25 +298,15 @@ def _tokenize_outside_braces(s: str) -> list[str]:
             i += 1
             continue
 
-        if s[i] == "{":
-            # parse balanced brace group (with nesting)
-            j = i + 1
-            depth = 1
-            while j < n and depth > 0:
-                if s[j] == "{":
-                    depth += 1
-                elif s[j] == "}":
-                    depth -= 1
-                j += 1
-            tokens.append(s[i:j])  # keep braces
-            i = j
-            continue
-
-        # normal token until whitespace or '~'
+        # read until whitespace or '~' at brace depth 0
         j = i
-        while j < n and (not s[j].isspace()) and s[j] != "~":
-            # do not start a brace group here; it becomes its own token in next loop
+        depth = 0
+        while j < n:
             if s[j] == "{":
+                depth += 1
+            elif s[j] == "}":
+                depth = max(depth - 1, 0)
+            elif depth == 0 and (s[j].isspace() or s[j] == "~"):
                 break
             j += 1
         tokens.append(s[i:j])
@@ -376,6 +510,18 @@ def canonicalize_journal(name: str) -> str:
     return out
 
 
+def canonicalize_publisher(name: str) -> str:
+    """Canonicalize publisher names conservatively.
+
+    Existing braces are treated as user protection. Otherwise, apply the same
+    casing logic used for titles while preserving explicit all-caps and mixed-
+    case tokens from the source.
+    """
+    if "{" in name or "}" in name:
+        return name
+    return title_case(name)
+
+
 # module for formatting pages
 def normalize_pages(p: str) -> str:
     """Normalize page range format
@@ -567,6 +713,12 @@ def title_case(text: str) -> str:
             word_pos += 1
             continue
 
+        if _preserve_token_case(core):
+            result.append(prefix + core + suffix)
+            after_colon = _ends_with_colon(w)
+            word_pos += 1
+            continue
+
         # digits / single-letter uppercase
         if core and (core[0].isdigit() or (len(core) == 1 and core.isalpha() and core.isupper())):
             result.append(w)
@@ -642,6 +794,12 @@ def book_title_case(text: str) -> str:
             result.append(w.upper())
             word_pos += 1
             after_colon = w.endswith(":")
+            continue
+
+        if _preserve_token_case(w):
+            result.append(w)
+            word_pos += 1
+            after_colon = _ends_with_colon(w)
             continue
 
         # check whether the initial character is digit
@@ -770,6 +928,12 @@ def sentence_case(text: str) -> str:
             word_pos += 1
             continue
 
+        if _preserve_token_case(core):
+            result.append(prefix + core + suffix)
+            after_colon = _ends_with_colon(w)
+            word_pos += 1
+            continue
+
         # digits / single-letter uppercase -> keep
         if core and (core[0].isdigit() or (len(core) == 1 and core.isupper())):
             result.append(w)
@@ -795,6 +959,48 @@ def sentence_case(text: str) -> str:
     return "".join(result)
 
 
+def _extract_arxiv_id(entry: Dict) -> str | None:
+    """Extract the arXiv ID from the entry.
+
+    Args:
+        entry (Dict): The entry to extract the arXiv ID from.
+
+    Returns:
+        str | None: The arXiv ID.
+    """
+    for field in ("journal", "note", "eprint"):
+        value = entry.get(field, "")
+        if not value:
+            continue
+
+        match = re.search(r"arxiv\s*:\s*([A-Za-z0-9._/-]+)", value, flags=re.I)
+        if match:
+            return match.group(1).rstrip(".,;)")
+
+    if entry.get("archiveprefix", "").lower() == "arxiv" and entry.get("eprint"):
+        return str(entry["eprint"]).strip()
+
+    return None
+
+
+def _preferred_fields(entry_type: str) -> list[str]:
+    """Return the preferred fields for the given entry type.
+
+    Args:
+        entry_type (str): The entry type.
+
+    Returns:
+        list[str]: The preferred fields.
+    """
+    if entry_type == "article":
+        return ARTICLE_KEEP
+    if entry_type == "book":
+        return BOOK_KEEP
+    if entry_type == "inproceedings":
+        return INPROC_KEEP
+    return OTHER_KEEP
+
+
 def format_entry(entry: Dict) -> Dict:
     """Formats a BibTeX entry by applying specific normalization and case formatting rules.
 
@@ -815,14 +1021,15 @@ def format_entry(entry: Dict) -> Dict:
         entry["journal"] = canonicalize_journal(entry["journal"])
     if "booktitle" in entry:
         entry["booktitle"] = title_case(entry["booktitle"])
+    if "publisher" in entry:
+        entry["publisher"] = canonicalize_publisher(entry["publisher"])
     # if it is arXiv, a separate conversion process will be applied.
-    if entry.get("ENTRYTYPE", "").lower() == "misc" or "arxiv" in entry.get("journal", "").lower():
-        # extracted arXiv id
-        arx_id = None
-        # extract arXiv id from note field
-        m = re.search(r"arXiv:([0-9.]+)", entry.get("note", ""), flags=re.I)
-        if m:
-            arx_id = m.group(1)
+    if (
+        entry.get("ENTRYTYPE", "").lower() == "misc"
+        or "arxiv" in entry.get("journal", "").lower()
+        or entry.get("archiveprefix", "").lower() == "arxiv"
+    ):
+        arx_id = _extract_arxiv_id(entry)
 
         entry["ENTRYTYPE"] = "article"
         if arx_id:
@@ -848,25 +1055,17 @@ def format_entry(entry: Dict) -> Dict:
             else:
                 entry["title"] = title_case(entry["title"])
 
-    # specify the fields to keep according to the bibitem type.
-    if entry_type == "article":
-        keep = ARTICLE_KEEP
-    elif entry_type == "book":
-        keep = BOOK_KEEP
-    elif entry_type == "inproceedings":
-        keep = INPROC_KEEP
-    else:
-        keep = OTHER_KEEP
+    keep = _preferred_fields(entry_type)
 
-    for k in list(entry.keys()):
-        if k not in keep and k != "ENTRYTYPE":
-            del entry[k]
-
-    # arrange the order
+    # Arrange preferred fields first, but preserve any additional metadata.
     ordered = {}
     for k in ["ENTRYTYPE", "ID"] + keep:
         if k in entry:
             ordered[k] = entry[k]
+
+    for k, v in entry.items():
+        if k not in ordered:
+            ordered[k] = v
     return ordered
 
 
@@ -929,36 +1128,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # load config
-    with args.config.open(encoding="utf-8") as f:
-        config = json.load(f)
-
-    global USER_SPECIFIED_TITLE, PROPER_LOWER_MAP
-    USER_SPECIFIED_TITLE = set(config.get("USER_SPECIFIED_TITLE", []))
-    PROPER_LOWER_MAP = {noun.lower(): noun for noun in USER_SPECIFIED_TITLE}
-
-    global EXCLUDE_APOS_S, LOWER, ACRONYMS, JOURNAL_CANONICAL_MAP, JOURNAL_CANONICAL_PATTERNS
-    EXCLUDE_APOS_S = set(config.get("EXCLUDE_APOS_S", []))
-    LOWER = set(config.get("LOWER", []))
-    ACRONYMS = set(config.get("ACRONYMS", []))
-    JOURNAL_CANONICAL = config.get("JOURNAL_CANONICAL", [])
-    JOURNAL_CANONICAL_MAP = {_journal_key(x): x for x in JOURNAL_CANONICAL}
-    JOURNAL_CANONICAL_PATTERNS = [(_canonical_pattern(x), x) for x in sorted(JOURNAL_CANONICAL, key=len, reverse=True)]
-
-    global ARTICLE_KEEP, BOOK_KEEP, INPROC_KEEP, OTHER_KEEP
-    KEEP_ELEMENTS = config.get("KEEP_ELEMENTS", {})
-    ARTICLE_KEEP = KEEP_ELEMENTS.get("ARTICLE_KEEP", [])
-    BOOK_KEEP = KEEP_ELEMENTS.get("BOOK_KEEP", [])
-    INPROC_KEEP = KEEP_ELEMENTS.get("INPROC_KEEP", [])
-    OTHER_KEEP = KEEP_ELEMENTS.get("OTHER_KEEP", [])
-
-    # set info
-    global INITIAL_RE
-    INITIAL_RE = re.compile(r"^[A-Za-z]")
-    # set info from argument
-    global CASE, EXCLUDE_BRACE
-    CASE = args.case
-    EXCLUDE_BRACE = args.exclude_brace
+    configure(case=args.case, exclude_brace=args.exclude_brace, config_path=args.config)
 
     # execute formatter
     out = args.output or args.bibfile.with_stem(args.bibfile.stem + "_formatted")
